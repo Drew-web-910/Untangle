@@ -66,12 +66,15 @@
     const jargon = HEDGE_JARGON.test(sentence);
 
     // Weighted composite score, roughly 0-100+.
+    // Grade level and clause count only count *above* a normal baseline
+    // (grade 8, 2 clauses) so ordinary well-written text doesn't trigger —
+    // only sentences that are unusually dense relative to typical prose.
     let score = 0;
-    score += Math.max(grade, 0) * 4;           // grade level dominates
-    score += longWordRatio * 40;                // dense jargon/long words
-    score += Math.min(clauseCount, 5) * 4;      // nested clauses
+    score += Math.max(grade - 8, 0) * 6;
+    score += longWordRatio * 40;
+    score += Math.max(clauseCount - 2, 0) * 6;
     score += passive ? 8 : 0;
-    score += jargon ? 10 : 0;
+    score += jargon ? 12 : 0;
 
     return { score, grade, longWordRatio, clauseCount, passive, jargon, wordCount };
   }

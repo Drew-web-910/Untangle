@@ -3,12 +3,18 @@
 // and highlights the worst offenders with a hover tooltip.
 
 (function () {
-  const SCORE_THRESHOLD_DEFAULT = 45; // tune via popup later
+  // 1-10 sensitivity scale. Level 1 flags almost everything, level 10
+  // only flags the most extreme, jargon-dense sentences.
+  const LEVEL_TO_THRESHOLD = {
+    1: 2, 2: 8, 3: 15, 4: 22, 5: 30,
+    6: 38, 7: 46, 8: 55, 9: 65, 10: 80,
+  };
+  const LEVEL_DEFAULT = 5;
   const SELECTOR = 'p, li, blockquote, td, dd, figcaption';
   const PROCESSED_ATTR = 'data-untangle-processed';
   const HIGHLIGHT_CLASS = 'untangle-highlight';
 
-  let threshold = SCORE_THRESHOLD_DEFAULT;
+  let threshold = LEVEL_TO_THRESHOLD[LEVEL_DEFAULT];
   let enabled = true;
   let flaggedCount = 0;
 
@@ -103,7 +109,7 @@
 
     const rect = target.getBoundingClientRect();
     tip.style.display = 'block';
-    tip.style.top = `${window.scrollY + rect.bottom + 6}px`;
+    tip.style.top = `${window.scrollY + rect.bottom + 2}px`;
     tip.style.left = `${window.scrollX + rect.left}px`;
 
     const btn = tip.querySelector('.untangle-simplify-btn');
@@ -127,32 +133,45 @@
     });
   }
 
+  let hideTimer = null;
+
   function hideTooltip() {
     if (tooltipEl) tooltipEl.style.display = 'none';
   }
 
+  function scheduleHide() {
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(hideTooltip, 300);
+  }
+
+  function cancelHide() {
+    clearTimeout(hideTimer);
+  }
+
   document.addEventListener('mouseover', (e) => {
     const target = e.target.closest(`.${HIGHLIGHT_CLASS}`);
-    if (target) showTooltip(target);
+    if (target) {
+      cancelHide();
+      showTooltip(target);
+    }
+    if (e.target.closest('.untangle-tooltip')) {
+      cancelHide();
+    }
   });
 
   document.addEventListener('mouseout', (e) => {
     const leavingHighlight = e.target.closest(`.${HIGHLIGHT_CLASS}`);
-    const goingToTooltip = e.relatedTarget && e.relatedTarget.closest?.('.untangle-tooltip');
-    if (leavingHighlight && !goingToTooltip) hideTooltip();
-  });
-
-  document.addEventListener('mouseout', (e) => {
-    if (tooltipEl && e.target.closest('.untangle-tooltip')) {
-      const goingToHighlight = e.relatedTarget && e.relatedTarget.closest?.(`.${HIGHLIGHT_CLASS}`);
-      if (!goingToHighlight) hideTooltip();
+    const leavingTooltip = e.target.closest('.untangle-tooltip');
+    if (leavingHighlight || leavingTooltip) {
+      scheduleHide();
     }
   });
 
   // --- Init: load settings, then scan ---
-  chrome.storage.sync.get(['untangleEnabled', 'untangleThreshold'], (settings) => {
+  chrome.storage.sync.get(['untangleEnabled', 'untangleLevel'], (settings) => {
     enabled = settings.untangleEnabled !== false;
-    threshold = settings.untangleThreshold || SCORE_THRESHOLD_DEFAULT;
+    const level = settings.untangleLevel || LEVEL_DEFAULT;
+    threshold = LEVEL_TO_THRESHOLD[level] || LEVEL_TO_THRESHOLD[LEVEL_DEFAULT];
     if (enabled) scanPage();
   });
 
