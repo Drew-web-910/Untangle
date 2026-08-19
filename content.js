@@ -29,6 +29,14 @@
     const text = el.textContent.trim();
     if (text.length < 20) return; // skip trivial fragments
 
+    // Text with no sentence-ending punctuation at all is usually nav/menu
+    // text or a label, not real prose — scoring it as "one sentence" wildly
+    // inflates the grade-level math. Skip it.
+    if (!/[.!?]/.test(text)) {
+      el.setAttribute(PROCESSED_ATTR, 'true');
+      return;
+    }
+
     const results = window.CognitiveLoad.analyzeText(text);
     const flagged = results.filter((r) => r.score >= threshold);
     if (flagged.length === 0) {
@@ -105,12 +113,32 @@
         ${reasons.map((r) => `<li>${escapeHtml(r)}</li>`).join('')}
       </ul>
       <button class="untangle-simplify-btn" type="button">Simplify this sentence</button>
+      <button class="untangle-verify-btn" type="button">Check with AI</button>
     `;
 
     const rect = target.getBoundingClientRect();
     tip.style.display = 'block';
     tip.style.top = `${window.scrollY + rect.bottom + 2}px`;
     tip.style.left = `${window.scrollX + rect.left}px`;
+
+    const verifyBtn = tip.querySelector('.untangle-verify-btn');
+    verifyBtn.addEventListener('click', () => {
+      verifyBtn.textContent = 'Checking...';
+      verifyBtn.disabled = true;
+      chrome.runtime
+        .sendMessage({ type: 'UNTANGLE_VERIFY', sentence: target.textContent })
+        .then((res) => {
+          if (res && res.verdict) {
+            verifyBtn.outerHTML = `<div class="untangle-verdict">${escapeHtml(res.verdict)}</div>`;
+          } else {
+            const errMsg = (res && res.error) || 'Unknown error';
+            verifyBtn.outerHTML = `<div class="untangle-error">${escapeHtml(errMsg)}</div>`;
+          }
+        })
+        .catch((err) => {
+          verifyBtn.outerHTML = `<div class="untangle-error">${escapeHtml(String(err))}</div>`;
+        });
+    });
 
     const btn = tip.querySelector('.untangle-simplify-btn');
     btn.addEventListener('click', () => {
@@ -122,13 +150,12 @@
           if (res && res.rewrite) {
             btn.outerHTML = `<div class="untangle-rewrite">${escapeHtml(res.rewrite)}</div>`;
           } else {
-            btn.textContent = 'Failed — try again';
-            btn.disabled = false;
+            const errMsg = (res && res.error) || 'Unknown error';
+            btn.outerHTML = `<div class="untangle-error">${escapeHtml(errMsg)}</div>`;
           }
         })
-        .catch(() => {
-          btn.textContent = 'Failed — try again';
-          btn.disabled = false;
+        .catch((err) => {
+          btn.outerHTML = `<div class="untangle-error">${escapeHtml(String(err))}</div>`;
         });
     });
   }

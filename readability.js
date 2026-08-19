@@ -45,6 +45,7 @@
 
   const PASSIVE_MARKERS = /\b(is|are|was|were|be|been|being)\s+\w+ed\b/i;
   const HEDGE_JARGON = /\b(notwithstanding|heretofore|pursuant|aforementioned|utilize|facilitate|leverage|synerg\w*|paradigm|methodology|infrastructure)\b/i;
+  const ACRONYM = /^[A-Z]{2,6}$/;
 
   // Score a single sentence. Returns a 0-100+ complexity score plus
   // a breakdown so the UI/tooltip can explain *why* it was flagged.
@@ -57,7 +58,9 @@
 
     const grade = fleschKincaidGrade(words, 1);
 
-    const longWords = words.filter((w) => countSyllables(w) >= 4);
+    // Acronyms (CHIP, ACA, COBRA...) shouldn't count as "complex" words
+    // even if their syllable count looks high.
+    const longWords = words.filter((w) => !ACRONYM.test(w) && countSyllables(w) >= 4);
     const longWordRatio = longWords.length / wordCount;
 
     const clauseCount = (sentence.match(/[,;:]/g) || []).length;

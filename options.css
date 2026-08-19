@@ -67,3 +67,37 @@ button:hover {
 .help a {
   color: #60a5fa;
 }
+
+.setup-guide {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #33393f;
+}
+
+.setup-guide h2 {
+  font-size: 14px;
+  color: #ffb84d;
+  margin: 0 0 10px 0;
+}
+
+.setup-guide ol {
+  padding-left: 20px;
+  margin: 0 0 14px 0;
+}
+
+.setup-guide li {
+  font-size: 13px;
+  line-height: 1.6;
+  margin-bottom: 6px;
+}
+
+.setup-guide a {
+  color: #60a5fa;
+}
+
+.setup-guide code {
+  background: #1f2328;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 12px;
+}
